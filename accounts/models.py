@@ -1,0 +1,97 @@
+from django.db import models
+#importaciones necesarias para trabajar con los usuarios y autenticaciones de django
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
+
+# Create your models here.
+
+#Se crea la clase que contiene las funciones para crear usuarios y super usuarios
+class MyAccountManager(BaseUserManager):
+
+    def create_user(self, first_name, last_name, email, username, password=None):
+
+        if not email:
+            raise ValueError('El usuario debe tener un email')
+
+        if not username:
+            raise ValueError('El usuario debe tener un username')
+
+        #se crea el objeto user
+        user = self.model(
+            email = self.normalize_email(email),
+            username = username,
+            first_name = first_name,
+            last_name = last_name,
+        )
+
+        #se crea manualmente el password
+        user.set_password(password)
+
+        #se salva el objeto en la base de datos
+        user.save(using=self._db)
+
+        #retornamos el usuario
+        return user
+
+    #Creamos la funcion para crear un superuser
+    def create_superuser(self, first_name, last_name, email, username, password):
+
+        #utilizamos la funcion 'create_user' para obtener un usuario
+        user = self.create_user(
+            email = self.normalize_email(email),
+            username = username,
+            first_name = first_name,
+            password = password,
+            last_name = last_name,
+        )
+
+        #Le otorgamos los privilegios de ser superuser
+        user.is_admin = True
+        user.is_active = True
+        user.is_staff = True
+        user.is_superadmin = True
+
+        #se salva el objeto en la base de datos
+        user.save(using=self._db)
+
+        #retornamos el usuario
+        return user
+
+#Se crea una clase account con la estructura del usuario
+class Account(AbstractBaseUser):
+
+    first_name = models.CharField(max_length=50)
+
+    last_name = models.CharField(max_length=50)
+
+    username = models.CharField(max_length=50, unique=True)
+
+    email = models.CharField(max_length=50, unique=True)
+
+    phone_number = models.CharField(max_length=50)
+
+    #Campos y funciones predeterminados de django para crear usuarios
+
+    date_joined = models.DateTimeField(auto_now_add=True)
+    last_login = models.DateTimeField(auto_now_add=True)
+    is_admin = models.BooleanField(default=False)
+    is_staff = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=False)
+    is_superadmin = models.BooleanField(default=False)
+
+    #se define que el email sera el necesario
+    USERNAME_FIELD = 'email'
+
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
+
+    #Incluimos las funciones para crear los usuarios en el modelo principal Account
+    #Creamos una instancia al objeto
+    objects = MyAccountManager()
+
+    def __str__(self):
+        return self.email
+
+    def has_perm(self, perm, obj=None):
+        return self.is_admin
+    
+    def has_module_perms(self, add_label):
+        return True
